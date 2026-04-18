@@ -11,7 +11,9 @@ import AIChat from "./pages/AIChat";
 import HabitsTracker from "./pages/HabitsTracker";
 import DailyChallenges from "./pages/DailyChallenges";
 import NotebooksList from "./pages/NotebooksList";
-import NotebookDetail from "./pages/NotebookDetail";
+import OAuthCallback from "./pages/OAuthCallback";
+import TutorPage from "./pages/TutorPage";
+
 import NotebookFullscreen from "./pages/NotebookFullscreen";
 import Analytics from "./pages/Analytics";
 import Flashcards from "./pages/Flashcards";
@@ -131,7 +133,8 @@ function ProtectedRouter() {
         <Route path="/" component={Dashboard} />
         <Route path="/challenges" component={DailyChallenges} />
         <Route path="/notebooks" component={NotebooksList} />
-        <Route path="/notebooks/:id" component={NotebookDetail} />
+        <Route path="/auth/callback" component={OAuthCallback} />
+        <Route path="/tutor/:id" component={TutorPage} />
         <Route
           path="/notebooks/:id/fullscreen"
           component={NotebookFullscreen}

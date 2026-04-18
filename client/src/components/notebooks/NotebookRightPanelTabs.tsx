@@ -57,6 +57,7 @@ import TopicContextModal from "./TopicContextModal";
 import PodcastConfigModal from "./PodcastConfigModal";
 import PodcastQueue from "./PodcastQueue";
 import { cn } from "@/lib/utils";
+import { useGameState } from "@/hooks/useGameState";
 
 interface Props {
   notebook: Notebook;
@@ -90,6 +91,7 @@ export default function NotebookRightPanelTabs({
     setRightPanelTab,
     toggleLeftPanel,
   } = useLayoutStore();
+  const { addXP } = useGameState();
 
   const [generating, setGenerating] = useState<string | null>(null);
   const [selectedContent, setSelectedContent] =
@@ -192,7 +194,7 @@ export default function NotebookRightPanelTabs({
 
   const extractContent = async (
     selectedItems: SourceItem[],
-    onProgress?: (status: string) => Promise<void>
+    onProgress?: (status: string) => void
   ): Promise<{ text: string; results: ExtractionResult[] } | null> => {
     const docsAsSources: ContentSource[] = selectedItems
       .filter(s => s.type === "document")
@@ -325,6 +327,7 @@ export default function NotebookRightPanelTabs({
           generatedContent: updated,
           urlSources,
         });
+        addXP(100, notebook.subjectId, `Resumen generado: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -393,6 +396,7 @@ export default function NotebookRightPanelTabs({
           generatedContent: updated,
           urlSources,
         });
+        addXP(150, notebook.subjectId, `Flashcards generadas: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -461,6 +465,7 @@ export default function NotebookRightPanelTabs({
           generatedContent: updated,
           urlSources,
         });
+        addXP(100, notebook.subjectId, `Test generado: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1060,6 +1065,7 @@ export default function NotebookRightPanelTabs({
         <ContentModal
           content={selectedContent}
           notebookId={notebook.id}
+          subjectId={notebook.subjectId}
           onClose={() => setSelectedContent(null)}
         />
       )}

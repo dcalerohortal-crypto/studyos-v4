@@ -108,3 +108,14 @@ export function useGameState() {
     setProfile,
   };
 }
+
+export function getLast7DaysXP(activityLog: ActivityLog[]) {
+  const days = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
+  return Array.from({length: 7}, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split("T")[0];
+    const xp = activityLog.filter(a => a.timestamp.startsWith(dateStr))
+      .reduce((sum, a) => sum + (a.xpGanado || 0), 0);
+    return { day: days[d.getDay()], xp };
+  });
+}

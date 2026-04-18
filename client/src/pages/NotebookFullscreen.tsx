@@ -1,5 +1,4 @@
 import { useRoute, useLocation } from "wouter";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Notebook } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import NotebookLeftPanelFull from "@/components/notebooks/NotebookLeftPanelFull";
@@ -8,21 +7,23 @@ import NotebookRightPanelTabs from "@/components/notebooks/NotebookRightPanelTab
 import NotebookRightPanelFull from "@/components/notebooks/NotebookRightPanelFull";
 import { useLayoutStore } from "@/hooks/useLayoutStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNotebooksSupabase } from "@/hooks/useNotebooksSupabase";
 
 export default function NotebookFullscreen() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/notebooks/:id/fullscreen");
-  const [notebooks, setNotebooks] = useLocalStorage<Notebook[]>(
-    "studyos_notebooks",
-    []
-  );
+  const [matchDirect, paramsDirect] = useRoute("/notebooks/:id");
+  const { notebooks, updateNotebook: updateNotebookSupabase } = useNotebooksSupabase();
   const { leftPanelOpen, toggleLeftPanel } = useLayoutStore();
 
-  if (!match || !params?.id) {
+  const notebookId = params?.id || paramsDirect?.id;
+  const isValid = match || matchDirect;
+
+  if (!isValid || !notebookId) {
     return <div>Cuaderno no encontrado</div>;
   }
 
-  const notebook = notebooks.find(n => n.id === params.id);
+  const notebook = notebooks.find(n => n.id === notebookId);
 
   if (!notebook) {
     return (
@@ -41,7 +42,7 @@ export default function NotebookFullscreen() {
   }
 
   function handleUpdateNotebook(updated: Notebook) {
-    setNotebooks(notebooks.map(n => (n.id === notebook.id ? updated : n)));
+    updateNotebookSupabase(updated);
   }
 
   return (
@@ -56,7 +57,15 @@ export default function NotebookFullscreen() {
           <span className="text-sm text-muted-foreground">Volver</span>
         </button>
         <h1 className="text-lg font-bold text-foreground">{notebook.name}</h1>
-        <div className="w-12" />
+        <div className="w-auto">
+          <button
+            onClick={() => setLocation(`/tutor/${notebook.id}`)}
+            className="px-3 py-1.5 text-xs font-semibold bg-accent text-accent-foreground hover:bg-accent/90 rounded-md transition-colors"
+            title="Tutor con IA dedicado a este cuaderno"
+          >
+            Abrir Tutor (Exp.)
+          </button>
+        </div>
       </div>
 
       {/* 3-Panel Layout - Full Screen */}

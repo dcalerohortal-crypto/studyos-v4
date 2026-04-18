@@ -1,4 +1,4 @@
-import { useGameState } from "@/hooks/useGameState";
+import { useGameState, getLast7DaysXP } from "@/hooks/useGameState";
 import { SUBJECTS, LEVEL_UP_THRESHOLD } from "@/../../shared/const";
 import {
   BarChart,
@@ -25,15 +25,7 @@ export default function Dashboard() {
   }));
 
   // Datos para la gráfica de actividad reciente (últimos 7 días)
-  const activityData = [
-    { day: "Lun", xp: 150 },
-    { day: "Mar", xp: 200 },
-    { day: "Mié", xp: 180 },
-    { day: "Jue", xp: 220 },
-    { day: "Vie", xp: 190 },
-    { day: "Sáb", xp: 250 },
-    { day: "Dom", xp: 100 },
-  ];
+  const activityData = getLast7DaysXP(activityLog);
 
   const xpToNextLevel =
     LEVEL_UP_THRESHOLD - (profile.xpTotal % LEVEL_UP_THRESHOLD);

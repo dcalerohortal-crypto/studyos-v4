@@ -21,6 +21,7 @@ import AchievementPopup from "./AchievementPopup";
 interface ContentModalProps {
   content: GeneratedContent;
   notebookId: string;
+  subjectId?: string;
   onClose: () => void;
   onAddToSRS?: () => void;
 }
@@ -28,6 +29,7 @@ interface ContentModalProps {
 export default function ContentModal({
   content,
   notebookId,
+  subjectId,
   onClose,
   onAddToSRS,
 }: ContentModalProps) {
@@ -128,6 +130,7 @@ export default function ContentModal({
                     onAnswerCorrect={handleTestAnswer}
                     onComplete={handleTestComplete}
                     onXPChange={xp => addXP(xp)}
+                    subjectId={subjectId}
                   />
                 </div>
               </div>
@@ -171,9 +174,8 @@ export default function ContentModal({
               <div className="p-6">
                 <div className="max-w-3xl mx-auto">
                   <PodcastViewer
-                    title={content.title}
-                    podcastData={content.content as any}
-                    onComplete={() => addXP(XP_AWARDS.SUMMARY_READ)}
+                    content={content}
+                    onClose={onClose}
                   />
                 </div>
               </div>

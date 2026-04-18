@@ -50,6 +50,7 @@ import PodcastViewer from "./PodcastViewer";
 import TopicContextModal from "./TopicContextModal";
 import PodcastConfigModal from "./PodcastConfigModal";
 import PodcastQueue from "./PodcastQueue";
+import { useGameState } from "@/hooks/useGameState";
 
 interface Props {
   notebook: Notebook;
@@ -70,6 +71,7 @@ export default function NotebookRightPanelFull({
   notebook,
   onUpdateNotebook,
 }: Props) {
+  const { addXP } = useGameState();
   const [generating, setGenerating] = useState<string | null>(null);
   const [selectedContent, setSelectedContent] =
     useState<GeneratedContent | null>(null);
@@ -321,6 +323,7 @@ export default function NotebookRightPanelFull({
           generatedContent: updated,
           urlSources,
         });
+        addXP(100, notebook.subjectId, `Resumen generado: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -391,6 +394,7 @@ export default function NotebookRightPanelFull({
           generatedContent: updated,
           urlSources,
         });
+        addXP(150, notebook.subjectId, `Flashcards generadas: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -461,6 +465,7 @@ export default function NotebookRightPanelFull({
           generatedContent: updated,
           urlSources,
         });
+        addXP(100, notebook.subjectId, `Test generado: ${notebook.name}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1134,6 +1139,7 @@ export default function NotebookRightPanelFull({
         <ContentModal
           content={selectedContent}
           notebookId={notebook.id}
+          subjectId={notebook.subjectId}
           onClose={() => setSelectedContent(null)}
         />
       )}

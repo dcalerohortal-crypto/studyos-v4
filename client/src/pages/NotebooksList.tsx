@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useNotebooksSupabase } from '@/hooks/useNotebooksSupabase';
 import { SUBJECTS } from '@/../../shared/const';
 import { Notebook } from '@/types';
 import { Plus, Trash2, Calendar, FileText } from 'lucide-react';
@@ -7,7 +7,7 @@ import { useLocation } from 'wouter';
 
 export default function NotebooksList() {
   const [, setLocation] = useLocation();
-  const [notebooks, setNotebooks] = useLocalStorage<Notebook[]>('studyos_notebooks', []);
+  const { notebooks, createNotebook, deleteNotebook } = useNotebooksSupabase();
   const [selectedSubject, setSelectedSubject] = useState<string>('matematicas');
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState('');
@@ -17,27 +17,14 @@ export default function NotebooksList() {
 
   const handleCreateNotebook = () => {
     if (!newNotebookName.trim()) return;
-
-    const newNotebook: Notebook = {
-      id: `notebook_${Date.now()}`,
-      subjectId: selectedSubject,
-      name: newNotebookName,
-      description: '',
-      documents: [],
-      chatHistory: [],
-      generatedContent: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setNotebooks([...notebooks, newNotebook]);
+    createNotebook(newNotebookName, selectedSubject);
     setNewNotebookName('');
     setShowNewDialog(false);
   };
 
   const handleDeleteNotebook = (notebookId: string) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este cuaderno?')) {
-      setNotebooks(notebooks.filter(n => n.id !== notebookId));
+      deleteNotebook(notebookId);
     }
   };
 

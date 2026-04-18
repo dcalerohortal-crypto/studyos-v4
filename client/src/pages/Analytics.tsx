@@ -1,4 +1,4 @@
-import { useGameState } from "@/hooks/useGameState";
+import { useGameState, getLast7DaysXP } from "@/hooks/useGameState";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { SUBJECTS, LEVEL_UP_THRESHOLD } from "@/../../shared/const";
 import {
@@ -55,16 +55,8 @@ export default function Analytics() {
     fill: subject.color,
   })).filter(d => d.value > 0);
 
-  // Datos de tendencia semanal
-  const weeklyData = [
-    { day: "Lun", xp: 150, nivel: 1 },
-    { day: "Mar", xp: 200, nivel: 1 },
-    { day: "Mié", xp: 180, nivel: 1 },
-    { day: "Jue", xp: 220, nivel: 1 },
-    { day: "Vie", xp: 190, nivel: 1 },
-    { day: "Sáb", xp: 250, nivel: 1 },
-    { day: "Dom", xp: 100, nivel: 1 },
-  ];
+  // Datos de tendencia semanal (reales)
+  const weeklyData = getLast7DaysXP(activityLog);
 
   // Estadísticas
   const stats = [

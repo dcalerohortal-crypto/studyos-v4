@@ -21,6 +21,10 @@ import { useAgent } from "@/hooks/useAgent";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useThinkingAgent } from "@/hooks/useThinkingAgent";
 import ThinkingConsole from "@/components/agenda/ThinkingConsole";
+import RutinaRenderer from "@/components/agenda/RutinaRenderer";
+import { Rutina } from "@/types";
+
+const GOOGLE_SKILLS = ["calendario", "drive", "reporte", "tracking"];
 
 const AGENT_SKILLS = [
   {
@@ -62,6 +66,7 @@ export default function AIChat() {
   const [activeSkill, setActiveSkill] = useState("chat");
   const [showCommands, setShowCommands] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [chatRutinas, setChatRutinas] = useState<Record<number, Rutina>>({});
   const { addXP } = useGameState();
   const {
     isConnected: googleConnected,
@@ -70,10 +75,6 @@ export default function AIChat() {
   } = useGoogleAuth();
 
   const {
-    syncCalendar,
-    sendReport,
-    organizeDrive,
-    getTrackingStats,
     loading: agentLoading,
   } = useAgent();
 
@@ -110,31 +111,13 @@ export default function AIChat() {
       // Pasar token a las funciones (esto requeriría modificar useAgent, pero por ahora las skills funcionan)
 
       if (skillId === "calendario") {
-        const events = await syncCalendar();
-        response = `📅 Calendario sincronizado:\n\n${events
-          .map(e => `• ${e.title} (${e.duration}min)`)
-          .join("\n")}`;
+        response = "Esta skill estará disponible próximamente.";
       } else if (skillId === "drive") {
-        const folders = await organizeDrive();
-        response = `📁 Archivos organizados por materia:\n\n${folders
-          .map(f => `• ${f.folder}: ${f.files} archivos`)
-          .join("\n")}`;
+        response = "Esta skill estará disponible próximamente.";
       } else if (skillId === "reporte") {
-        const result = await sendReport("david@estudio.es");
-        response = result.success
-          ? `✅ Reporte enviado a ${result.recipient}`
-          : `❌ Error: ${result.message}`;
+        response = "Esta skill estará disponible próximamente.";
       } else if (skillId === "tracking") {
-        const stats = await getTrackingStats();
-        if (stats) {
-          response =
-            `⏱️ Stats de estudio:\n\n` +
-            `📅 Hoy: ${stats.today.hours}h (${stats.today.sessions} sesiones)\n` +
-            `📅 Semana: ${stats.week.hours}h (${stats.week.sessions} sesiones)\n` +
-            `📅 Mes: ${stats.month.hours}h (${stats.month.sessions} sesiones)`;
-        } else {
-          response = "❌ Error obteniendo stats";
-        }
+        response = "Esta skill estará disponible próximamente.";
       } else {
         response = `Skill activada: ${skill.name}. ${skill.description}`;
       }
@@ -202,9 +185,10 @@ export default function AIChat() {
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        // If rutina was generated, award XP
+        // If rutina was generated, award XP and store for rendering
         if (rutina) {
           addXP(100, "", `Rutina creada: ${rutina.nombre}`);
+          setChatRutinas(prev => ({ ...prev, [messages.length + 1]: rutina }));
         }
       } else {
         const errorMessage: ChatMessage = {
@@ -309,27 +293,40 @@ export default function AIChat() {
               </kbd>
             </div>
             <div className="space-y-2">
-              {AGENT_SKILLS.map(skill => (
-                <button
-                  key={skill.id}
-                  onClick={() => handleSkillSelect(skill.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${
-                    activeSkill === skill.id
-                      ? "bg-accent/20 border border-accent"
-                      : "bg-secondary hover:bg-secondary/80"
-                  }`}
-                >
-                  <skill.icon
-                    className={`w-5 h-5 ${activeSkill === skill.id ? "text-accent" : "text-muted-foreground"}`}
-                  />
-                  <div>
-                    <p className="font-medium text-foreground">{skill.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {skill.description}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              {AGENT_SKILLS.map(skill => {
+                const needsGoogle = GOOGLE_SKILLS.includes(skill.id);
+                // Si necesita google, siempre deshabilita el click (ya sea por no conectar o porque no está lista)
+                const isDisabled = needsGoogle; 
+                let tooltip = skill.description;
+                if (needsGoogle) {
+                  tooltip = googleConnected ? "Próximamente" : "Conecta Google primero";
+                }
+                return (
+                  <button
+                    key={skill.id}
+                    onClick={() => !isDisabled && handleSkillSelect(skill.id)}
+                    disabled={isDisabled}
+                    title={tooltip}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${
+                      isDisabled
+                        ? "bg-secondary/50 opacity-50 cursor-not-allowed"
+                        : activeSkill === skill.id
+                          ? "bg-accent/20 border border-accent"
+                          : "bg-secondary hover:bg-secondary/80"
+                    }`}
+                  >
+                    <skill.icon
+                      className={`w-5 h-5 ${isDisabled ? "text-muted-foreground/50" : activeSkill === skill.id ? "text-accent" : "text-muted-foreground"}`}
+                    />
+                    <div>
+                      <p className={`font-medium ${isDisabled ? "text-muted-foreground" : "text-foreground"}`}>{skill.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {tooltip}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -431,6 +428,11 @@ export default function AIChat() {
                   <p className="text-sm md:text-base whitespace-pre-wrap">
                     {message.content}
                   </p>
+                  {chatRutinas[idx] && (
+                    <div className="mt-3">
+                      <RutinaRenderer rutina={chatRutinas[idx]} />
+                    </div>
+                  )}
                   <p
                     className={`text-xs mt-2 ${
                       message.role === "user"

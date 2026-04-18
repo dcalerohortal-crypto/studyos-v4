@@ -1,9 +1,8 @@
 import { AIResponse } from "@/types";
 import { chatWithGemini, ChatOptions } from "./geminiService";
 import { chatWithGroq } from "./groqService";
-import { chatWithOllama, checkOllamaAvailable } from "./ollamaService";
 
-export type AIProvider = "ollama" | "gemini" | "groq";
+export type AIProvider = "gemini" | "groq" | "ollama";
 
 export interface APIClientOptions {
   preferProvider?: AIProvider;
@@ -20,7 +19,7 @@ export interface APIClientOptions {
 }
 
 const DEFAULT_OPTIONS: Required<APIClientOptions> = {
-  preferProvider: "ollama",
+  preferProvider: "gemini",
   maxTokens: 8192,
   temperature: 0.7,
   onProviderChange: () => {},
@@ -28,6 +27,16 @@ const DEFAULT_OPTIONS: Required<APIClientOptions> = {
   onFallback: () => {},
   useTools: false,
 };
+
+function getProviderOrder(preferred: AIProvider): AIProvider[] {
+  const useOllama = import.meta.env.VITE_USE_OLLAMA === "true";
+
+  if (preferred === "groq") {
+    return useOllama ? ["ollama", "groq", "gemini"] : ["groq", "gemini"];
+  }
+
+  return useOllama ? ["ollama", "gemini", "groq"] : ["gemini", "groq"];
+}
 
 export async function chatWithAI(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
@@ -40,12 +49,7 @@ export async function chatWithAI(
   let usedProvider: AIProvider | null = null;
   let retryCount = 0;
 
-  const providers: AIProvider[] =
-    opts.preferProvider === "ollama"
-      ? ["ollama", "gemini", "groq"]
-      : opts.preferProvider === "gemini"
-        ? ["gemini", "groq", "ollama"]
-        : ["groq", "gemini", "ollama"];
+  const providers = getProviderOrder(opts.preferProvider);
 
   for (const provider of providers) {
     try {
@@ -55,17 +59,18 @@ export async function chatWithAI(
       let response: AIResponse & { toolCalls?: any[] };
 
       if (provider === "ollama") {
+        // Dynamic import only if ollama is enabled
+        const { chatWithOllama, checkOllamaAvailable } = await import(
+          "./ollamaService"
+        );
         const ollamaAvailable = await checkOllamaAvailable();
         if (!ollamaAvailable) {
           console.log("⚠️ Ollama: No disponible, probando siguiente...");
-          opts.onFallback?.(
-            "ollama",
-            providers[providers.indexOf(provider) + 1] || "gemini"
-          );
+          const nextProvider =
+            providers[providers.indexOf(provider) + 1] || "gemini";
+          opts.onFallback?.("ollama", nextProvider);
           continue;
         }
-
-        const tools = opts.useTools ? undefined : undefined;
         response = await chatWithOllama(messages, userMessage, systemPrompt);
       } else if (provider === "gemini") {
         response = await chatWithGemini(messages, userMessage, systemPrompt, {
@@ -86,12 +91,6 @@ export async function chatWithAI(
       if (response.error) {
         lastError = response.error;
         console.warn(`⚠️ API: ${provider} falló: ${response.error}`);
-      }
-
-      if (provider === "ollama" && response.error?.includes("disponible")) {
-        console.log("🔄 API: Ollama no disponible, probando siguiente...");
-        opts.onFallback?.("ollama", "gemini");
-        continue;
       }
 
       if (
@@ -131,7 +130,7 @@ export async function chatWithAI(
   return {
     success: false,
     error: lastError || "Todos los proveedores de IA fallaron",
-    provider: usedProvider || "ollama",
+    provider: usedProvider || "gemini",
   };
 }
 
@@ -145,12 +144,7 @@ export async function chatWithAITools(
   let lastError: string = "";
   let usedProvider: AIProvider | null = null;
 
-  const providers: AIProvider[] =
-    opts.preferProvider === "ollama"
-      ? ["ollama", "gemini", "groq"]
-      : opts.preferProvider === "gemini"
-        ? ["gemini", "groq", "ollama"]
-        : ["groq", "gemini", "ollama"];
+  const providers = getProviderOrder(opts.preferProvider);
 
   for (const provider of providers) {
     try {
@@ -160,13 +154,14 @@ export async function chatWithAITools(
       let response: AIResponse & { toolCalls?: any[] };
 
       if (provider === "ollama") {
+        const { chatWithOllama, checkOllamaAvailable, getTutorTools } =
+          await import("./ollamaService");
         const ollamaAvailable = await checkOllamaAvailable();
         if (!ollamaAvailable) {
           console.log("⚠️ Ollama: No disponible, probando siguiente...");
           continue;
         }
 
-        const { getTutorTools } = await import("./ollamaService");
         response = await chatWithOllama(
           messages,
           userMessage,
@@ -191,10 +186,6 @@ export async function chatWithAITools(
         lastError = response.error;
         console.warn(`⚠️ API Tools: ${provider} falló: ${response.error}`);
       }
-
-      if (provider === "ollama" && response.error?.includes("disponible")) {
-        continue;
-      }
     } catch (err) {
       const error = err instanceof Error ? err.message : "Error desconocido";
       lastError = error;
@@ -207,7 +198,7 @@ export async function chatWithAITools(
   return {
     success: false,
     error: lastError || "Todos los proveedores de IA fallaron",
-    provider: usedProvider || "ollama",
+    provider: usedProvider || "gemini",
   };
 }
 
@@ -221,20 +212,14 @@ export async function generateWithAI(
 
 export function isProviderAvailable(provider: AIProvider): boolean {
   if (provider === "ollama") {
-    return true;
+    return import.meta.env.VITE_USE_OLLAMA === "true";
   }
-  if (provider === "gemini") {
-    return !!import.meta.env.VITE_GEMINI_API_KEY;
-  }
-  if (provider === "groq") {
-    return !!import.meta.env.VITE_GROQ_API_KEY;
-  }
-  return false;
+  // Gemini and Groq are always "available" since they go through the proxy
+  return true;
 }
 
 export function getAvailableProviders(): AIProvider[] {
-  const available: AIProvider[] = ["ollama"];
-  if (isProviderAvailable("gemini")) available.push("gemini");
-  if (isProviderAvailable("groq")) available.push("groq");
+  const available: AIProvider[] = ["gemini", "groq"];
+  if (import.meta.env.VITE_USE_OLLAMA === "true") available.push("ollama");
   return available;
 }

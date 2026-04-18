@@ -1,9 +1,5 @@
 import { AIResponse, Rutina } from "@/types";
 
-// Groq API - Gratuito y rápido
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "gsk_test_key";
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-
 const SYSTEM_INSTRUCTION = `Eres el asistente IA de StudyOS, una app de estudio y desarrollo personal para un estudiante de 16 años en 4º ESO en Madrid, España.
 
 REGLAS:
@@ -42,70 +38,38 @@ export async function chatWithGroq(
   userMessage: string,
   systemPrompt?: string
 ): Promise<AIResponse> {
-  console.log("🔍 Groq: Iniciando petición...");
-  console.log(
-    "🔑 API Key presente:",
-    !!GROQ_API_KEY,
-    GROQ_API_KEY ? `(${GROQ_API_KEY.substring(0, 10)}...)` : ""
-  );
-
-  if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_test_key") {
-    console.error("❌ Groq: API key no configurada");
-    return {
-      success: false,
-      error: "Groq API key no configurada. Añade VITE_GROQ_API_KEY en .env",
-    };
-  }
-
-  const contents = [
-    ...messages,
-    { role: "user" as const, content: userMessage },
-  ];
+  console.log("🔍 Groq: Enviando petición via proxy...");
 
   try {
-    console.log("📡 Groq: Enviando petición a", GROQ_API_URL);
-
-    const response = await fetch(GROQ_API_URL, {
+    const response = await fetch("/api/ai-proxy", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: systemPrompt || SYSTEM_INSTRUCTION },
-          ...contents,
-        ],
-        temperature: 0.7,
-        max_tokens: 2048,
+        messages,
+        userMessage,
+        systemPrompt: systemPrompt || SYSTEM_INSTRUCTION,
+        provider: "groq",
+        options: { temperature: 0.7, maxTokens: 2048 },
       }),
     });
 
-    console.log("📥 Groq: Respuesta recibida, status:", response.status);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMsg =
-        (errorData as { error?: { message?: string } })?.error?.message ||
-        `HTTP ${response.status}`;
-      console.error("❌ Groq: Error HTTP", response.status, errorMsg);
-      return { success: false, error: `Error de Groq: ${errorMsg}` };
+      const errorMsg = (errorData as any)?.error || `HTTP ${response.status}`;
+      console.error("❌ Groq proxy error:", errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     const data = await response.json();
-    console.log("✅ Groq: Datos recibidos");
-    const text = data?.choices?.[0]?.message?.content || "";
+    console.log("✅ Groq: Respuesta recibida via proxy");
 
-    if (!text) {
-      console.error("❌ Groq: No devolvió texto");
-      return { success: false, error: "Groq no devolvió respuesta" };
+    if (data.success && data.text) {
+      // Intentar parsear rutina si existe
+      const rutina = parseRutinaFromResponse(data.text) || undefined;
+      return { success: true, text: data.text, rutina };
     }
 
-    // Intentar parsear rutina si existe
-    const rutina = parseRutinaFromResponse(text) || undefined;
-
-    return { success: true, text, rutina };
+    return data;
   } catch (err) {
     const error = err instanceof Error ? err.message : "Error de conexión";
     console.error("❌ Groq error:", error);

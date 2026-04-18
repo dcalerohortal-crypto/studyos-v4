@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useGameState } from "@/hooks/useGameState";
 import { TestQuestion } from "@/types";
 import {
   ChevronLeft,
@@ -18,6 +19,7 @@ interface TestViewerProps {
   onAnswerCorrect: () => void;
   onComplete: (correct: number, total: number) => void;
   onXPChange?: (xp: number) => void;
+  subjectId?: string;
 }
 
 export default function TestViewer({
@@ -26,7 +28,9 @@ export default function TestViewer({
   onAnswerCorrect,
   onComplete,
   onXPChange,
+  subjectId,
 }: TestViewerProps) {
+  const { addXP } = useGameState();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -64,8 +68,11 @@ export default function TestViewer({
       // Test completado
       setShowComplete(true);
       onComplete(correctCount + (isCorrect ? 1 : 0), questions.length);
+      if (subjectId) {
+        addXP(200, subjectId, "Test completado");
+      }
     }
-  }, [currentIndex, questions.length, correctCount, isCorrect, onComplete]);
+  }, [currentIndex, questions.length, correctCount, isCorrect, onComplete, subjectId, addXP]);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
