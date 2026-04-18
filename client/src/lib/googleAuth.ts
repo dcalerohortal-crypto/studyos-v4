@@ -1,4 +1,4 @@
-import axios from "axios";
+
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const REDIRECT_URI =
@@ -94,14 +94,15 @@ export async function getGoogleUser(
   accessToken: string
 ): Promise<GoogleUser | null> {
   try {
-    const response = await axios.get(
+    const response = await fetch(
       "https://www.googleapis.com/oauth2/v2/userinfo",
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 
-    return response.data;
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+    return await response.json();
   } catch (error) {
     console.error("Error getting user info:", error);
     return null;
@@ -114,17 +115,14 @@ export async function googleCalendarListEvents(
   maxResults = 10
 ) {
   try {
-    const response = await axios.get(
-      "https://www.googleapis.com/calendar/v3/freeBusy",
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/freeBusy?timeMin=${encodeURIComponent(new Date().toISOString())}&maxResults=${maxResults}`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-        params: {
-          timeMin: new Date().toISOString(),
-          maxResults,
-        },
       }
     );
-    return response.data;
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+    return await response.json();
   } catch (error) {
     console.error("Error listing calendar events:", error);
     return null;
@@ -133,18 +131,15 @@ export async function googleCalendarListEvents(
 
 export async function googleDriveListFiles(accessToken: string, query = "") {
   try {
-    const response = await axios.get(
-      "https://www.googleapis.com/drive/v3/files",
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,parents)&pageSize=50`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-        params: {
-          q: query,
-          fields: "files(id, name, mimeType, parents)",
-          pageSize: 50,
-        },
       }
     );
-    return response.data.files;
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+    const data = await response.json();
+    return data.files;
   } catch (error) {
     console.error("Error listing drive files:", error);
     return null;
@@ -164,14 +159,19 @@ export async function sendGmail(
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
-    const response = await axios.post(
+    const response = await fetch(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages.send",
-      { raw: encoded },
       {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ raw: encoded }),
       }
     );
-    return response.data;
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+    return await response.json();
   } catch (error) {
     console.error("Error sending email:", error);
     return null;

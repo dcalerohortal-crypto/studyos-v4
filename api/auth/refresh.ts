@@ -11,7 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Refresh token is required" });
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {

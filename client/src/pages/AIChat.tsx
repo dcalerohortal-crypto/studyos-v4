@@ -76,6 +76,7 @@ export default function AIChat() {
 
   const {
     loading: agentLoading,
+    organizeDrive,
   } = useAgent();
 
   const {
@@ -113,7 +114,28 @@ export default function AIChat() {
       if (skillId === "calendario") {
         response = "Esta skill estará disponible próximamente.";
       } else if (skillId === "drive") {
-        response = "Esta skill estará disponible próximamente.";
+        if (!googleConnected) {
+          response = "Necesitas conectar tu cuenta de Google primero para usar esta skill.";
+        } else {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: "assistant",
+              content: "Iniciando organización automática de tu Google Drive. Esto puede tardar hasta un minuto...",
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+          try {
+            const stats = await organizeDrive();
+            if (stats && stats.length > 0) {
+              response = `¡Drive organizado con éxito!\n\nEstadísticas:\n` + stats.map(s => `- ${s.folder}: ${s.filesMoved} archivos movidos`).join('\n');
+            } else {
+              response = "He revisado tu Drive y parece que todo está ya perfectamente organizado.";
+            }
+          } catch (e) {
+            response = `Hubo un error al organizar tu Drive: ${e instanceof Error ? e.message : "Error desconocido"}`;
+          }
+        }
       } else if (skillId === "reporte") {
         response = "Esta skill estará disponible próximamente.";
       } else if (skillId === "tracking") {
@@ -295,11 +317,15 @@ export default function AIChat() {
             <div className="space-y-2">
               {AGENT_SKILLS.map(skill => {
                 const needsGoogle = GOOGLE_SKILLS.includes(skill.id);
-                // Si necesita google, siempre deshabilita el click (ya sea por no conectar o porque no está lista)
-                const isDisabled = needsGoogle; 
+                // Si es drive y está conectado, no está deshabilitado.
+                const isDisabled = needsGoogle && (!googleConnected || skill.id !== "drive"); 
                 let tooltip = skill.description;
                 if (needsGoogle) {
-                  tooltip = googleConnected ? "Próximamente" : "Conecta Google primero";
+                  if (!googleConnected) {
+                    tooltip = "Conecta Google primero";
+                  } else if (skill.id !== "drive") {
+                    tooltip = "Próximamente";
+                  }
                 }
                 return (
                   <button
